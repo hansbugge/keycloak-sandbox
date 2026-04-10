@@ -1,0 +1,85 @@
+services:
+
+  # ── Mailpit ─────────────────────────────────────────────────────────────────
+  mailpit:
+    image: axllent/mailpit:latest
+    ports:
+      - "1025:1025"   # SMTP
+      - "8025:8025"   # Web UI → http://localhost:8025
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:8025/"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 5s
+
+  # ── Keycloak ─────────────────────────────────────────────────────────────────
+  keycloak:
+    image: quay.io/keycloak/keycloak:latest
+    command: start-dev
+    environment:
+      # Bootstrap admin credentials
+      KC_BOOTSTRAP_ADMIN_USERNAME: admin
+      KC_BOOTSTRAP_ADMIN_PASSWORD: admin
+      # Enable health endpoint (served on management port 9000)
+      KC_HEALTH_ENABLED: "true"
+      # Hostname v2 config (Keycloak 25+):
+      # Fix the public hostname so token issuer is always http://localhost:8080
+      # (critical for mixed Docker-internal / browser URL routing)
+      KC_HOSTNAME: "http://localhost:8080"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_ENABLED: "true"
+      KC_LOG_LEVEL: INFO
+    ports:
+      - "8080:8080"   # Admin console + OIDC → http://localhost:8080
+    depends_on:
+      mailpit:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      # Keycloak 26 is built on ubi9-micro which has no curl/wget.
+      # Use bash's built-in /dev/tcp to check the management port (9000).
+      # Port 9000 only opens after Keycloak has fully initialised.
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/localhost/9000"]
+      interval: 3s
+      timeout: 5s
+      retries: 30
+      start_period: 10s
+
+  # ── Keycloak provisioner (runs once, then exits) ──────────────────────────────
+  keycloak-provisioner:
+    image: quay.io/keycloak/keycloak:latest
+    volumes:
+      - ./keycloak/init.sh:/init.sh:ro
+    entrypoint: ["/bin/bash", "/init.sh"]
+    environment:
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_ADMIN: admin
+      KEYCLOAK_ADMIN_PASSWORD: admin
+    depends_on:
+      keycloak:
+        condition: service_healthy
+    restart: "no"
+
+  # ── Dummy web app ─────────────────────────────────────────────────────────────
+  app:
+    build: ./app
+    ports:
+      - "3000:3000"   # Web app → http://localhost:3000
+    environment:
+      # Internal URL for server-to-server calls (token exchange, JWKS, userinfo)
+      KEYCLOAK_INTERNAL_URL: http://keycloak:8080
+      # Public URL used to build browser-facing auth/logout redirect URLs
+      KEYCLOAK_PUBLIC_URL: http://localhost:8080
+      KEYCLOAK_REALM: myrealm
+      CLIENT_ID: myapp
+      CLIENT_SECRET: dev-secret-change-me
+      APP_URL: http://localhost:3000
+      SESSION_SECRET: dev-session-secret-change-in-prod
+    depends_on:
+      keycloak:
+        condition: service_healthy
+      keycloak-provisioner:
+        condition: service_completed_successfully
+    restart: unless-stopped
