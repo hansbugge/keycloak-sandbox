@@ -52,6 +52,7 @@ services:
     image: quay.io/keycloak/keycloak:latest
     volumes:
       - ./keycloak/init.sh:/init.sh:ro
+      - ./keycloak/realm.json:/keycloak/realm.json:ro
     entrypoint: ["/bin/bash", "/init.sh"]
     environment:
       KEYCLOAK_URL: http://keycloak:8080
