@@ -16,7 +16,7 @@ services:
 
   # ── Keycloak ─────────────────────────────────────────────────────────────────
   keycloak:
-    image: quay.io/keycloak/keycloak:latest
+    build: ./keycloak
     command: start-dev
     environment:
       # Bootstrap admin credentials
