@@ -91,7 +91,7 @@
         },
         {
           "authenticatorFlow": true,
-          "flowAlias": "password-or-no-password",
+          "flowAlias": "password-or-magic-link",
           "requirement": "REQUIRED",
           "priority": 20,
           "userSetupAllowed": false
@@ -100,13 +100,13 @@
           "authenticatorFlow": true,
           "flowAlias": "Browser - Conditional 2FA",
           "requirement": "CONDITIONAL",
-          "priority": 30,
+          "priority": 31,
           "userSetupAllowed": false
         }
       ]
     },
     {
-      "alias": "password-or-no-password",
+      "alias": "password-or-magic-link",
       "description": "",
       "providerId": "basic-flow",
       "topLevel": false,
@@ -116,30 +116,14 @@
           "authenticator": "auth-password-form",
           "authenticatorFlow": false,
           "requirement": "ALTERNATIVE",
-          "priority": 10,
+          "priority": 0,
           "userSetupAllowed": false
         },
         {
-          "authenticatorFlow": true,
-          "flowAlias": "no-password",
-          "requirement": "ALTERNATIVE",
-          "priority": 20,
-          "userSetupAllowed": false
-        }
-      ]
-    },
-    {
-      "alias": "no-password",
-      "description": "",
-      "providerId": "basic-flow",
-      "topLevel": false,
-      "builtIn": false,
-      "authenticationExecutions": [
-        {
-          "authenticator": "reset-password",
+          "authenticator": "magic-link-continuation-form",
           "authenticatorFlow": false,
-          "requirement": "REQUIRED",
-          "priority": 10,
+          "requirement": "ALTERNATIVE",
+          "priority": 1,
           "userSetupAllowed": false
         }
       ]
